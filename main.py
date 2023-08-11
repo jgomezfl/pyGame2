@@ -1,159 +1,17 @@
 import os, random, math, pygame
 from os import listdir
 from os.path import isfile, join
-pygame.init()
+import sys
+from Level1 import level1
+from Level2 import level2
 
-pygame.display.set_caption("Plataformer")
+NEGRO = (0, 0, 0)
+BLANCO = (255, 255, 255)
 
-BG_COLOR = (255, 255, 255)
 WIDTH, HEIGHT = 1000, 800
-FPS = 60
-PLAYER_VEL = 4
-
-window = pygame.display.set_mode((WIDTH, HEIGHT))
-
-def flip (sprites):
-    return [pygame.transform.flip(sprite, True, False) for sprite in sprites]
-
-def load_sprite_sheets(dir1, width, height, direction=False):
-    path = join("assets", dir1)
-    images = [f for f in listdir(path) if isfile(join(path, f))]
-    
-    all_sprites = {}
-    
-    for image in images:
-        sprite_sheet = pygame.image.load(join(path, image)).convert_alpha()
-        
-        sprites = []
-        for i in range(sprite_sheet.get_width() // width):
-            surface = pygame.Surface((width, height), pygame.SRCALPHA, 32)
-            rect = pygame.Rect(i * width, 0, width, height)
-            surface.blit(sprite_sheet, (0, 0), rect)
-            sprites.append(pygame.transform.scale2x(surface))
-            
-        if direction:
-            all_sprites[image.replace(".png", ""+ "_right")] = sprites
-            all_sprites[image.replace(".png", ""+ "_left")] = flip(sprites)
-        else:
-            all_sprites[image.replace(".png", "")] = sprites
-            
-    return all_sprites
-
-def get_block(size):
-    path = join("assets", "Terrain", "Terrain.png")
-    image = pygame.image.load(path).convert_alpha()
-    surface = pygame.Surface((size, size), pygame.SRCALPHA, 32)
-    rect = pygame.Rect(96, 0, size, size)
-    surface.blit(image, (0, 0), rect)
-    return pygame.transform.scale2x(surface)
-
-class Player(pygame.sprite.Sprite):
-    COLOR = (255, 0, 0)
-    GRAVITY = 1
-    SPRITES = load_sprite_sheets("MainCharacter", 32, 32, True)
-    ANIMATION_DELAY = 3
-    
-    def __init__(self, x, y, width, height):
-        super().__init__()
-        self.rect = pygame.Rect(x, y, width, height)
-        self.x_vel = 0
-        self.y_vel = 0
-        self.mask = None
-        self.direction = "left"
-        self.animation_count = 0
-        self.fall_count = 0
-        self.jump_count = 0
-        
-    def jump(self):
-        self.y_vel = -self.GRAVITY * 8
-        self.animation_count = 0
-        self.jump_count += 1
-        if self.jump_count == 1:
-            self.fall_count = 0
-        
-        
-    def move(self, dx, dy):
-        self.rect.x += dx
-        self.rect.y += dy
-    
-    def move_left(self, vel):
-        self.x_vel = -vel
-        if self.direction != "left":
-            self.direction = "left"
-            self.animation_count = 0
-    
-    def move_right(self, vel):
-        self.x_vel = vel
-        if self.direction != "right":
-            self.direction = "right"
-            self.animation_count = 0
-    
-    def loop(self):
-        # self.y_vel += min(1, (self.fall_count / fps) * self.GRAVITY)
-        # handle_vertical_collision(self,walls, self.x_vel, self.y_vel)
-        self.move(self.x_vel, self.y_vel)
-        
-        self.fall_count += 1
-        self.update_sprite()
-        
-    def landed(self):
-        self.fall_count = 0
-        self.y_vel = 0
-        self.jump_count = 0
-        
-    def hit_head(self):
-        self.count = 0
-        self.y_vel = 0
-        
-    def update_sprite(self):
-        sprite_sheet = "idle"
-        if self.y_vel < 0:
-            if self.jump_count == 1:
-                sprite_sheet = "jump"
-            elif self.jump_count == 2:
-                sprite_sheet = "double_jump"
-        elif self.y_vel > self.GRAVITY * 2:
-            sprite_sheet = "fall"
-        elif self.x_vel != 0:
-            sprite_sheet = "walking"
-        
-        sprite_sheet_name = sprite_sheet+"_"+self.direction
-        sprites = self.SPRITES[sprite_sheet_name]
-        sprite_index = (self.animation_count // self.ANIMATION_DELAY) % len(sprites)
-        self.sprite = sprites[sprite_index]
-        self.animation_count += 1
-        self.update()
-        
-    def update(self):
-        self.rect = self.sprite.get_rect(topleft=(self.rect.x, self.rect.y))
-        self.mask = pygame.mask.from_surface(self.sprite)
-        
-    def draw(self, win, offset_x):
-        # pygame.draw.rect(win, self.COLOR, self.rect)
-        # self.sprite = self.SPRITES["idle_"+self.direction][0]
-        win.blit(self.sprite, (self.rect.x - offset_x, self.rect.y))
-        
-class Object(pygame.sprite.Sprite):
-    def __init__(self, x, y, width, height, name=None):
-        super().__init__()
-        self.rect = pygame.Rect(x, y, width, height)
-        self.image = pygame.Surface((width, height), pygame.SRCALPHA)
-        self.width = width
-        self.height = height
-        self.name = name
-        
-    def draw(self, win, offset_x):
-        win.blit(self.image, (self.rect.x - offset_x, self.rect.y))
-        
-class Block(Object): 
-    def __init__(self, x, y, size):
-        super().__init__(x, y, size, size)
-        block = get_block(size)
-        self.image.blit(block, (0, 0))
-        self.mask = pygame.mask.from_surface(self.image)
 
 def get_background(name):
-    image =  pygame.image.load(join("assets", "Background", name))
+    image = pygame.image.load(join("assets", "Background", name))
     _, _, width, height = image.get_rect()
     tiles = []
     
@@ -164,121 +22,86 @@ def get_background(name):
     
     return tiles, image
 
-def draw(window, background, bg_image, player, objects, offset_x):
+# def dibujar_texto(window, texto, contenedor_imagen, contenedor_rec, fuente_render, color):
+#     text = fuente_render.render(texto, 1, color)
+#     centro = text.get_rect()
+#     diferencia_x = contenedor_imagen.center[0] - centro.center[0]
+#     diferencia_y = contenedor_imagen.center[1] - centro.center[1]
+#     window.blit(text, [contenedor_rec.left + diferencia_x, contenedor_rec.top + diferencia_y])
+
+def dibujar_texto(pantalla, texto, contenedor_imagen, contenedor_rec, fuente_render, color):
+    text = fuente_render.render(texto, 1, color)
+    centro = text.get_rect()
+    diferencia_x = contenedor_imagen.center[0] - centro.center[0]
+    diferencia_y = contenedor_imagen.center[1] - centro.center[1]
+    pantalla.blit(text, [contenedor_rec[0] + diferencia_x, contenedor_rec[1] + diferencia_y])
+
+def main():
+    pygame.init()
+    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    pygame.display.set_caption("Main Menú")
+    
+    # background
+    background, bg_image = get_background("Blue.png")
     for tile in background:
-        window.blit(bg_image, tile)
-        
-    for obj in objects:
-        obj.draw(window, offset_x)
+        screen.blit(bg_image, tile)
     
-    player.draw(window, offset_x)
+    #Fuente Titulo
+    FuenteTitulo = pygame.font.Font("assets/Fonts/Roboto-Bold.ttf", 80)
+    text = FuenteTitulo.render("Bienvenido", True, NEGRO)
+    text_rect = text.get_rect()
     
-    pygame.display.update()
+    # imagenes de los botones
+    imagen_boton = pygame.image.load("assets/Botones/button.png")
+    imagen_boton_rect = imagen_boton.get_rect()
+    imagen_boton_pressed = pygame.image.load("assets/Botones/buttonPressed.png")
+    fuente_botones = pygame.font.SysFont('Courier', 20)
     
-def handle_vertical_collision(player, objects, fps):
-    collided_objects = []
-    player.y_vel += min(1, (player.fall_count / fps) * player.GRAVITY)
-    for obj in objects:
-        if pygame.sprite.collide_mask(player, obj):
-            if player.y_vel > 0:
-                player.rect.bottom = obj.rect.top
-                player.landed()
-            if player.y_vel < 0:
-                player.rect.top = obj.rect.bottom
-                player.hit_head()
-            if player.x_vel > 0:
-                player.rect.right = obj.rect.left
-            if player.x_vel < 0:
-                player.rect.left = obj.rect.right
-                
-        print(player.y_vel)
-        collided_objects.append(obj)
-        
-    return collided_objects
-
-def collide(player, objects, dx):
-    player.move(dx, 0)
-    player.update()
-    collided_object = None
-    for obj in objects:
-        if pygame.sprite.collide_mask(player, obj):
-            collided_object = obj
-            break
-        
-    player.move(dx, 0)
-    player.update()
-    return collided_object
-    
-def handle_move(player, walls, fps):
-    keys = pygame.key.get_pressed()
-    
-    player.x_vel = 0
-    # collide_left = collide(player, objects, -PLAYER_VEL * 2)
-    # collide_right = collide(player, objects, PLAYER_VEL * 2)
-    
-    # if keys[pygame.K_LEFT] and not collide_left:
-    #     player.move_left(PLAYER_VEL)
-    # if keys[pygame.K_RIGHT] and not collide_right:
-    #     player.move_right(PLAYER_VEL)
-    
-    if keys[pygame.K_LEFT]:
-        player.move_left(PLAYER_VEL)
-    if keys[pygame.K_RIGHT]:
-        player.move_right(PLAYER_VEL)
-        
-    # Did the wall collide with an object?
-    # list_walls_collided = pygame.sprite.spritecollide(player, walls, False)
-    # for wall in list_walls_collided:
-    #     if player.x_vel > 0:
-    #         player.rect.right = wall.rect.left
-    #     if player.x_vel < 0:
-    #         player.rect.left = wall.rect.right
-    #     if player.y_vel > 0:
-    #         player.rect.bottom = wall.rect.top
-    #     if player.y_vel < 0:
-    #         player.rect.top = wall.rect.bottom
-        
-    # for obj in objects:
-    #     if player.colliderect(obj):
-    #         player.
-    handle_vertical_collision(player, walls, fps)
-    
-
-def main(window):
-    clock = pygame.time.Clock() 
-    background, bg_image = get_background("Green.png")
-    
-    block_size = 96
-    
-    player = Player(100, 100, 50, 50)
-    floor = [Block(i * block_size, HEIGHT - block_size, block_size) for i in range(10)]
-    objects = [*floor, Block(0, HEIGHT - block_size * 2, block_size), Block(250, 450, block_size)]
-    
-    offset_x = 0
-    scroll_area_width = 200
+    #botones
+    botonLevel1 = {'text': "Nivel 1", 'image': imagen_boton, 'image_pressed': imagen_boton_pressed, 'rect': [screen.get_width() / 2 - imagen_boton_rect.width / 2, 450], 'on_click': False}
+    boton1Rect = pygame.Rect(botonLevel1['rect'][0], botonLevel1['rect'][1], botonLevel1['image'].get_rect()[2], botonLevel1['image'].get_rect()[3])
+    botonLevel2 = {'text': "Nivel 2", 'image': imagen_boton, 'image_pressed': imagen_boton_pressed, 'rect': [screen.get_width() / 2 - imagen_boton_rect.width / 2, 450 + imagen_boton_rect.height + 20], 'on_click': False}
+    boton2Rect = pygame.Rect(botonLevel2['rect'][0], botonLevel2['rect'][1], botonLevel2['image'].get_rect()[2], botonLevel2['image'].get_rect()[3])
     
     run = True
     while run:
-        clock.tick(FPS)
+        screen.blit(text, (screen.get_width() / 2 - text_rect.width / 2, 100))
+        if botonLevel1["on_click"]:
+            screen.blit(botonLevel1['image_pressed'], botonLevel1['rect'])
+        else:
+            screen.blit(botonLevel1['image'], botonLevel1['rect'])
+        dibujar_texto(screen, botonLevel1['text'], botonLevel1['image'].get_rect(), botonLevel1['rect'], fuente_botones, BLANCO)
+        if botonLevel2["on_click"]:
+            screen.blit(botonLevel2['image_pressed'], botonLevel2['rect'])
+        else:
+            screen.blit(botonLevel2['image'], botonLevel2['rect'])
+        dibujar_texto(screen, botonLevel2['text'], botonLevel2['image'].get_rect(), botonLevel2['rect'], fuente_botones, BLANCO)
+        # print(botonLevel1["on_click"])
+        # print(botonLevel2["on_click"])
+        pygame.display.flip()
         
         for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    run = False
+                if event.key == pygame.K_SPACE:
+                    level1(screen)
+                # if event.key == pygame.K_0:
+                #     Congratulations(screen)
             if event.type == pygame.QUIT:
                 run = False
-                break
-            
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE and player.jump_count < 2:
-                    player.jump()
-        
-        player.loop()
-        handle_move(player, objects, FPS)
-        draw(window, background, bg_image, player, objects, offset_x)
-        
-        if(player.rect.right - offset_x >= WIDTH - scroll_area_width and player.x_vel > 0) or ((player.rect.left - offset_x - offset_x <= scroll_area_width) and player.x_vel < 0):
-            offset_x += player.x_vel
+            if event.type == pygame.MOUSEBUTTONUP:
+                botonLevel1['on_click'] = False
+                if boton1Rect.collidepoint( mouse ):
+                    level1(screen)
+                if boton2Rect.collidepoint( mouse ):
+                    level2(screen)
+                botonLevel2['on_click'] = False
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                mouse = pygame.mouse.get_pos()
+                botonLevel1['on_click'] = boton1Rect.collidepoint( mouse )
+                botonLevel2['on_click'] = boton2Rect.collidepoint( mouse )
+    sys.exit()
     
-    pygame.quit()
-    quit()
-
 if __name__ == "__main__":
-    main(window)
+    main()
